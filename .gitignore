@@ -1,23 +1,113 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Dependencias
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
-
-# testing
-/coverage
-
-# production
+# Build de producción
 /build
+/dist
 
-# misc
-.DS_Store
+# Testing
+/coverage
+*.lcov
+
+# Archivos de entorno
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Logs
+logs
+*.log
+
+# Cache de npm/yarn
+.npm
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Archivos del sistema operativo
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# IDEs y editores
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# Archivos de Next.js (por si migras)
+.next/
+out/
+
+# Archivos de Vercel
+.vercel
+
+# Archivos de TypeScript
+*.tsbuildinfo
+
+# Archivos temporales
+.cache/
+.parcel-cache/
+.temp/
+*.tmp
+
+# Certificados SSL (si usas https local)
+*.pem
+*.key
+*.cert
+
+# Archivos de prueba
+.nyc_output
+
+# ESLint cache
+.eslintcache
+
+# Storybook
+storybook-static/
+
+# Optional: si no quieres subir package-lock.json (controversial)
+# package-lock.json
+
+# Optional: configuraciones personales locales
+config.local.js
+config.local.json
+```
+
+## 📝 **Estructura recomendada de tu proyecto:**
+```
+audio-manager/
+├── .gitignore          ← Este archivo
+├── package.json
+├── package-lock.json   ← Sí subirlo (lock de dependencias)
+├── README.md
+├── public/
+│   └── index.html
+└── src/
+    ├── components/
+    ├── hooks/
+    ├── services/
+    ├── utils/
+    ├── App.jsx
+    └── index.js
