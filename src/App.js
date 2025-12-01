@@ -3,7 +3,7 @@ import { Upload, Music, Play, Pause, Trash2, ArrowLeft, User, LogOut, FileText, 
 
 export default function AudioManager() {
   // ⚙️ CONFIGURACIÓN DE API - Cambia esta URL por tu endpoint
-  const API_BASE_URL = 'http://localhost:8000';  // 👈 Cambia esto por tu URL
+  const API_BASE_URL = 'http://192.227.80.200:6056';  // 👈 Cambia esto por tu URL
   
   // Inicializar el estado desde localStorage si existe
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
@@ -388,7 +388,64 @@ export default function AudioManager() {
   };
 
   // Función para subir audios a la API
+// Función para subir audios a la API
   const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB en bytes
+    
+    for (const file of files) {
+      try {
+        // ✅ VALIDACIÓN DE TAMAÑO - Verificar antes de subir
+        if (file.size > MAX_FILE_SIZE) {
+          const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+          showToast(
+            `⚠️ El archivo "${file.name}" (${fileSizeMB} MB) supera el límite de 20 MB`,
+            'warning'
+          );
+          continue; // Saltar este archivo y continuar con el siguiente
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(`${API_BASE_URL}/audios`, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: formData
+        });
+
+        if (response.status === 401) {
+          showToast('Tu sesión ha expirado. Por favor inicia sesión nuevamente.', 'error');
+          handleLogout();
+          return;
+        }
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.detail || `Error al subir archivo: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Agregar el audio retornado por el servidor a la lista
+        setAudios(prev => [...prev, data]);
+        showToast(`Audio "${file.name}" subido exitosamente`, 'success');
+      } catch (error) {
+        console.error('Error subiendo archivo:', error);
+        showToast(`Error al subir "${file.name}": ${error.message}`, 'error');
+      }
+    }
+    
+    // Limpiar el input para permitir subir el mismo archivo nuevamente si es necesario
+    e.target.value = '';
+  };
+
+
+
+
+  /*const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
     
     for (const file of files) {
@@ -425,7 +482,7 @@ export default function AudioManager() {
         showToast(`Error al subir "${file.name}": ${error.message}`, 'error');
       }
     }
-  };
+  };*/
 
   // Función para eliminar audio
   const handleDelete = async (id) => {
@@ -970,16 +1027,24 @@ export default function AudioManager() {
                       </>
                     )}
                   </button>
-                  
-                  {selectedAudio.extra && (
-                    <button
-                      onClick={() => setShowExtraModal(true)}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm sm:text-base"
-                    >
-                      <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
-                      Ver Análisis
-                    </button>
-                  )}
+                                    
+                    {selectedAudio.extra ? (
+                      <button
+                        onClick={() => setShowExtraModal(true)}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm sm:text-base"
+                      >
+                        <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+                        Ver Análisis
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        className="flex-1 flex items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed font-semibold text-sm sm:text-base"
+                      >
+                        <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+                        Análisis en proceso...
+                      </button>
+                    )}
                   
                   <button
                     onClick={() => handleDelete(selectedAudio.id)}
