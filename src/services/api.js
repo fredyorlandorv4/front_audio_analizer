@@ -83,7 +83,7 @@ export const usersAPI = {
 // Teams
 export const teamsAPI = {
   getAll: async (token) => {
-    const response = await fetch(`${API_BASE_URL}/teams`, {
+    const response = await fetch(`${API_BASE_URL}/teams/`, {
       headers: getAuthHeaders(token)
     });
     if (!response.ok) throw new Error('Error al remover miembro');
@@ -108,7 +108,7 @@ export const teamsAPI = {
   },
   
   create: async (token, teamData) => {
-    const response = await fetch(`${API_BASE_URL}/teams`, {
+    const response = await fetch(`${API_BASE_URL}/teams/`, {
       method: 'POST',
       headers: getAuthHeaders(token),
       body: JSON.stringify(teamData)
