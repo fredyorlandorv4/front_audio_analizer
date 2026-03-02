@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from './context/AppContext';
 import LoginView from './components/auth/LoginView';
 import Header from './components/layout/Header';
@@ -14,16 +14,23 @@ import AudioPlayer from './components/shared/AudioPlayer';
 import { useAudioPlayer } from './hooks/useAudioPlayer';
 
 export default function App() {
-  const { isLoggedIn, authToken, userRole, toasts, setToasts, showToast, audios, setAudios, login, logout } = useApp();
+  const { isLoggedIn, authToken, userRole, toasts, setToasts, showToast, audios, setAudios, sessionExpired, login, logout } = useApp();
   const [currentView, setCurrentView] = useState(() => isLoggedIn ? 'list' : 'login');
   const [selectedAudio, setSelectedAudio] = useState(null);
 
   const { playingId, loadingAudioId, togglePlay, stopPlayback } = useAudioPlayer(authToken, showToast);
 
+  // Detener reproducción cuando la sesión cierra (manual o por expiración)
+  useEffect(() => {
+    if (!isLoggedIn) {
+      stopPlayback();
+      setCurrentView('login');
+    }
+  }, [isLoggedIn]);
+
   const handleLogout = () => {
     stopPlayback();
     logout();
-    setCurrentView('login');
   };
 
   const handleLoginSuccess = (token, user, role) => {
@@ -32,49 +39,53 @@ export default function App() {
     showToast(`¡Bienvenido ${user}!`, 'success');
   };
 
-  if (!isLoggedIn) {
-    return <LoginView onLoginSuccess={handleLoginSuccess} />;
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header onLogout={handleLogout} />
-      <Navigation currentView={currentView} setCurrentView={setCurrentView} />
+      {!isLoggedIn ? (
+        <LoginView onLoginSuccess={handleLoginSuccess} sessionExpired={sessionExpired} />
+      ) : (
+        <>
+          <Header onLogout={handleLogout} />
+          <Navigation currentView={currentView} setCurrentView={setCurrentView} />
 
-      <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 ${playingId ? 'pb-24' : ''}`}>
-        {currentView === 'upload' && (
-          <AudioUpload onUploadSuccess={() => setCurrentView('list')} />
-        )}
+          <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 ${playingId ? 'pb-24' : ''}`}>
+            {currentView === 'upload' && (
+              <AudioUpload onUploadSuccess={() => setCurrentView('list')} />
+            )}
 
-        {currentView === 'list' && (
-          <AudioList
-            onSelectAudio={(audio) => { setSelectedAudio(audio); setCurrentView('detail'); }}
-            playingId={playingId}
-            loadingAudioId={loadingAudioId}
-            togglePlay={togglePlay}
-          />
-        )}
+            {currentView === 'list' && (
+              <AudioList
+                onSelectAudio={(audio) => { setSelectedAudio(audio); setCurrentView('detail'); }}
+                playingId={playingId}
+                loadingAudioId={loadingAudioId}
+                togglePlay={togglePlay}
+              />
+            )}
 
-        {currentView === 'detail' && selectedAudio && (
-          <AudioDetail
-            audio={selectedAudio}
-            onBack={() => setCurrentView('list')}
-            playingId={playingId}
-            loadingAudioId={loadingAudioId}
-            togglePlay={togglePlay}
-          />
-        )}
+            {currentView === 'detail' && selectedAudio && (
+              <AudioDetail
+                audio={selectedAudio}
+                onBack={() => setCurrentView('list')}
+                playingId={playingId}
+                loadingAudioId={loadingAudioId}
+                togglePlay={togglePlay}
+              />
+            )}
 
-        {currentView === 'users' && userRole === 1 && (
-          <UserManagement />
-        )}
+            {currentView === 'users' && userRole === 1 && (
+              <UserManagement />
+            )}
 
-        {currentView === 'teams' && userRole <= 2 && (
-          <TeamManagement />
-        )}
-      </main>
+            {currentView === 'teams' && userRole <= 2 && (
+              <TeamManagement />
+            )}
+          </main>
 
-      {playingId && <AudioPlayer audioId={playingId} audios={audios} onStop={stopPlayback} />}
+          {playingId && <AudioPlayer audioId={playingId} audios={audios} onStop={stopPlayback} />}
+        </>
+      )}
+
+      {/* Toast siempre montado para mostrar mensajes durante y después del logout */}
       <Toast toasts={toasts} setToasts={setToasts} />
     </div>
   );

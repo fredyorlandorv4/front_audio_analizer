@@ -1,14 +1,16 @@
 // src/components/teams/TeamManagement.jsx
 import React, { useState, useEffect } from 'react';
-import { Users, Edit, Trash2, User, Plus, X, ChevronRight } from 'lucide-react';
-import { teamsAPI, usersAPI, categoriasAPI } from '../../services/api';
+import { Users, Edit, Trash2, User, Plus, X, ChevronRight, BarChart2, Zap, Loader } from 'lucide-react';
+import { teamsAPI, usersAPI, categoriasAPI, analisisUsuarioAPI, analisisEquipoAPI } from '../../services/api';
 import TeamModal from './TeamModal';
 import AddMemberModal from './AddMemberModal';
 import MemberDetail from './MemberDetail';
+import AnalisisUsuarioModal from './AnalisisUsuarioModal';
+import AnalisisEquipoModal from './AnalisisEquipoModal';
 import { useApp } from '../../context/AppContext';
 
 export default function TeamManagement() {
-  const { authToken, showToast } = useApp(); // ✅ del contexto
+  const { authToken, showToast } = useApp();
   const [teams, setTeams] = useState([]);
   const [supervisors, setSupervisors] = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -16,6 +18,14 @@ export default function TeamManagement() {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
+
+  // Análisis modals
+  const [analisisMember, setAnalisisMember] = useState(null); // abre AnalisisUsuarioModal
+  const [analisisTeam, setAnalisisTeam]     = useState(null); // abre AnalisisEquipoModal
+
+  // Loading state para botones "Ejecutar"
+  const [ejecutandoUsers,  setEjecutandoUsers]  = useState(new Set());
+  const [ejecutandoEquipos, setEjecutandoEquipos] = useState(new Set());
 
   useEffect(() => {
     loadTeams();
@@ -108,8 +118,36 @@ export default function TeamManagement() {
     }
   };
 
-  const openCreateModal  = () => { setSelectedTeam(null); setShowTeamModal(true); };
-  const openEditModal    = (team) => { setSelectedTeam(team); setShowTeamModal(true); };
+  // Ejecutar análisis individual de usuario
+  const handleEjecutarAnalisisUsuario = async (userId) => {
+    if (ejecutandoUsers.has(userId)) return;
+    setEjecutandoUsers(prev => new Set(prev).add(userId));
+    try {
+      await analisisUsuarioAPI.ejecutar(authToken, userId);
+      showToast('Análisis iniciado. Los resultados estarán disponibles en breve.', 'success');
+    } catch {
+      showToast('Error al ejecutar el análisis del usuario', 'error');
+    } finally {
+      setEjecutandoUsers(prev => { const next = new Set(prev); next.delete(userId); return next; });
+    }
+  };
+
+  // Ejecutar análisis grupal de equipo
+  const handleEjecutarAnalisisEquipo = async (teamId) => {
+    if (ejecutandoEquipos.has(teamId)) return;
+    setEjecutandoEquipos(prev => new Set(prev).add(teamId));
+    try {
+      await analisisEquipoAPI.ejecutar(authToken, teamId);
+      showToast('Análisis grupal iniciado. Los resultados estarán disponibles en breve.', 'success');
+    } catch {
+      showToast('Error al ejecutar el análisis grupal', 'error');
+    } finally {
+      setEjecutandoEquipos(prev => { const next = new Set(prev); next.delete(teamId); return next; });
+    }
+  };
+
+  const openCreateModal    = () => { setSelectedTeam(null); setShowTeamModal(true); };
+  const openEditModal      = (team) => { setSelectedTeam(team); setShowTeamModal(true); };
   const openAddMemberModal = (team) => { setSelectedTeam(team); setShowAddMemberModal(true); };
 
   if (teams.length === 0) {
@@ -179,20 +217,63 @@ export default function TeamManagement() {
               {team.members?.length > 0 ? (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {team.members.map((member) => (
-                    <div key={member.id} className="flex justify-between p-2 bg-gray-50 rounded-lg hover:bg-purple-50 transition-colors group">
-                      <button onClick={() => setSelectedMember(member)} className="flex items-center gap-2 flex-1 text-left">
-                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                    <div key={member.id} className="flex items-center gap-1 p-2 bg-gray-50 rounded-lg hover:bg-purple-50 transition-colors group">
+                      {/* Info del miembro — clic abre detalle */}
+                      <button
+                        onClick={() => setSelectedMember(member)}
+                        className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                      >
+                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
                           <User className="w-4 h-4 text-purple-600" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate group-hover:text-purple-700">{member.nombre || member.email}</p>
                           {member.nombre && <p className="text-xs text-gray-500 truncate">{member.email}</p>}
                         </div>
-                        <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-purple-400" />
                       </button>
-                      <button onClick={() => handleRemoveMember(team.id, member.id)} className="p-1 text-red-600 hover:bg-red-50 rounded ml-1">
-                        <X className="w-4 h-4" />
-                      </button>
+
+                      {/* Botones de acción del miembro */}
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                        {/* Ver detalle de audios */}
+                        <button
+                          onClick={() => setSelectedMember(member)}
+                          title="Ver audios del operador"
+                          className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+
+                        {/* Análisis General — ver resumen */}
+                        <button
+                          onClick={() => setAnalisisMember(member)}
+                          title="Ver análisis general del operador"
+                          className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-100 rounded-lg transition-colors"
+                        >
+                          <BarChart2 className="w-4 h-4" />
+                        </button>
+
+                        {/* Ejecutar Análisis */}
+                        <button
+                          onClick={() => handleEjecutarAnalisisUsuario(member.id)}
+                          disabled={ejecutandoUsers.has(member.id)}
+                          title="Ejecutar análisis acumulativo del operador"
+                          className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-100 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {ejecutandoUsers.has(member.id)
+                            ? <Loader className="w-4 h-4 animate-spin" />
+                            : <Zap className="w-4 h-4" />
+                          }
+                        </button>
+
+                        {/* Remover del equipo */}
+                        <button
+                          onClick={() => handleRemoveMember(team.id, member.id)}
+                          title="Remover del equipo"
+                          className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -201,8 +282,9 @@ export default function TeamManagement() {
               )}
             </div>
 
+            {/* Stats */}
             <div className="mt-4 pt-4 border-t">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-4 mb-4">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-purple-600">{team.members?.length || 0}</p>
                   <p className="text-xs text-gray-600">Miembros</p>
@@ -221,6 +303,28 @@ export default function TeamManagement() {
                   </p>
                   <p className="text-xs text-gray-600">Punteo</p>
                 </div>
+              </div>
+
+              {/* Botones de análisis grupal del equipo */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setAnalisisTeam(team)}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium transition-colors"
+                >
+                  <BarChart2 className="w-4 h-4" />
+                  Análisis Grupal
+                </button>
+                <button
+                  onClick={() => handleEjecutarAnalisisEquipo(team.id)}
+                  disabled={ejecutandoEquipos.has(team.id)}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {ejecutandoEquipos.has(team.id) ? (
+                    <><Loader className="w-4 h-4 animate-spin" />Ejecutando...</>
+                  ) : (
+                    <><Zap className="w-4 h-4" />Ejecutar Análisis Grupal</>
+                  )}
+                </button>
               </div>
             </div>
           </div>
@@ -249,6 +353,22 @@ export default function TeamManagement() {
         <MemberDetail
           member={selectedMember}
           onClose={() => setSelectedMember(null)}
+        />
+      )}
+
+      {/* Modal análisis individual de operador */}
+      {analisisMember && (
+        <AnalisisUsuarioModal
+          member={analisisMember}
+          onClose={() => setAnalisisMember(null)}
+        />
+      )}
+
+      {/* Modal análisis grupal de equipo */}
+      {analisisTeam && (
+        <AnalisisEquipoModal
+          team={analisisTeam}
+          onClose={() => setAnalisisTeam(null)}
         />
       )}
     </div>

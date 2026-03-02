@@ -1,9 +1,9 @@
 // src/components/auth/LoginView.jsx
 import React, { useState } from 'react';
-import { Music } from 'lucide-react';
+import { Music, AlertTriangle } from 'lucide-react';
 import { authAPI } from '../../services/api';
 
-export default function LoginView({ onLoginSuccess, showToast }) {
+export default function LoginView({ onLoginSuccess, sessionExpired }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -20,15 +20,13 @@ export default function LoginView({ onLoginSuccess, showToast }) {
 
     try {
       const data = await authAPI.login(username, password);
-      
+
       if (!data.access_token) {
         setLoginError('Respuesta del servidor inválida');
         setIsLoggingIn(false);
         return;
       }
 
-      // ✅ Pasar role a onLoginSuccess
-      // ✅ ya no necesita showToast como prop, App.js maneja el toast de bienvenida
       onLoginSuccess(data.access_token, username, data.role);
     } catch (error) {
       setLoginError('Usuario o contraseña incorrectos');
@@ -50,8 +48,16 @@ export default function LoginView({ onLoginSuccess, showToast }) {
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-center mb-2 text-gray-800">Audio Manager</h1>
         <p className="text-center text-gray-600 mb-8 text-sm sm:text-base">Gestiona tus archivos de audio</p>
-        
+
         <div className="space-y-4">
+          {/* Banner de sesión expirada */}
+          {sessionExpired && !loginError && (
+            <div className="bg-amber-50 border border-amber-300 text-amber-800 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <p className="font-medium">Tu sesión ha expirado. Por favor inicia sesión nuevamente.</p>
+            </div>
+          )}
+
           {loginError && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
               <p className="font-medium">⚠️ {loginError}</p>
@@ -70,7 +76,7 @@ export default function LoginView({ onLoginSuccess, showToast }) {
               placeholder="Ingresa tu usuario"
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
             <input
@@ -83,7 +89,7 @@ export default function LoginView({ onLoginSuccess, showToast }) {
               placeholder="Ingresa tu contraseña"
             />
           </div>
-          
+
           <button
             onClick={handleLogin}
             disabled={isLoggingIn}
