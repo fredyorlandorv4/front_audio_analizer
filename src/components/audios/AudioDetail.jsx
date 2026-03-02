@@ -3,22 +3,25 @@ import React, { useState } from 'react';
 import { ArrowLeft, Music, Play, Pause, Trash2, FileText, X } from 'lucide-react';
 import { audiosAPI } from '../../services/api';
 import { formatBytes, formatDate } from '../../utils/formatters';
+import { useApp } from '../../context/AppContext';
 
-export default function AudioDetail({ 
-  audio, 
-  authToken, 
-  showToast, 
+export default function AudioDetail({
+  audio,
   onBack,
   playingId,
-  setPlayingId 
+  loadingAudioId,
+  togglePlay
 }) {
+  const { authToken, showToast, setAudios } = useApp();
   const [showExtraModal, setShowExtraModal] = useState(false);
 
   const handleDelete = async () => {
     if (!window.confirm('¿Eliminar este audio?')) return;
-    
+
     try {
       await audiosAPI.delete(authToken, audio.id);
+      // Eliminar del estado global para que la lista se actualice
+      setAudios(prev => prev.filter(a => a.id !== audio.id));
       showToast('Audio eliminado exitosamente', 'success');
       onBack();
     } catch (error) {
@@ -26,13 +29,8 @@ export default function AudioDetail({
     }
   };
 
-  const togglePlay = () => {
-    if (playingId === audio.id) {
-      setPlayingId(null);
-    } else {
-      setPlayingId(audio.id);
-    }
-  };
+  const isPlaying = playingId === audio.id;
+  const isLoading = loadingAudioId === audio.id;
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -49,7 +47,7 @@ export default function AudioDetail({
           <div className="bg-gradient-to-br from-purple-500 to-blue-500 p-8 rounded-2xl">
             <Music className="w-16 h-16 text-white" />
           </div>
-          
+
           <div className="flex-1">
             <h2 className="text-3xl font-bold text-gray-800 mb-2">{audio.original_filename}</h2>
             <div className="flex items-center gap-4 text-gray-600">
@@ -75,10 +73,16 @@ export default function AudioDetail({
 
           <div className="flex gap-3">
             <button
-              onClick={togglePlay}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold"
+              onClick={() => togglePlay(audio)}
+              disabled={isLoading}
+              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold disabled:opacity-50"
             >
-              {playingId === audio.id ? (
+              {isLoading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Cargando...
+                </>
+              ) : isPlaying ? (
                 <>
                   <Pause className="w-5 h-5" />
                   Pausar
@@ -90,7 +94,7 @@ export default function AudioDetail({
                 </>
               )}
             </button>
-                          
+
             {audio.extra ? (
               <button
                 onClick={() => setShowExtraModal(true)}
@@ -108,7 +112,7 @@ export default function AudioDetail({
                 Análisis en proceso...
               </button>
             )}
-            
+
             <button
               onClick={handleDelete}
               className="flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"
@@ -121,7 +125,7 @@ export default function AudioDetail({
       </div>
 
       {showExtraModal && audio.extra && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
           onClick={(e) => { if (e.target === e.currentTarget) setShowExtraModal(false); }}
         >
@@ -146,7 +150,6 @@ export default function AudioDetail({
                   <p className="text-gray-700">{audio.extra.summary}</p>
                 </div>
               )}
-              {/* Agregar más campos del análisis según necesites */}
             </div>
 
             <div className="sticky bottom-0 bg-gray-50 border-t p-4 flex justify-end">
