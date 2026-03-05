@@ -1,20 +1,94 @@
 // src/components/teams/AnalisisUsuarioModal.jsx
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { X, BarChart2, CheckCircle, TrendingUp, Lightbulb, Calendar, Loader, AlertTriangle, Star } from 'lucide-react';
 import { analisisUsuarioAPI } from '../../services/api';
 import { formatDate, scoreColor, scoreBg } from '../../utils/formatters';
 import { useApp } from '../../context/AppContext';
 
+// Maneja status en inglés y español
 const ESTADO_BADGE = {
-  completado: { label: 'Completado', cls: 'bg-green-100 text-green-800' },
-  procesando: { label: 'Procesando', cls: 'bg-yellow-100 text-yellow-800' },
-  pendiente:  { label: 'Pendiente',  cls: 'bg-gray-100 text-gray-600' },
-  error:      { label: 'Error',      cls: 'bg-red-100 text-red-800' },
+  completado:  { label: 'Completado', cls: 'bg-green-100 text-green-800' },
+  completed:   { label: 'Completado', cls: 'bg-green-100 text-green-800' },
+  procesando:  { label: 'Procesando', cls: 'bg-yellow-100 text-yellow-800' },
+  processing:  { label: 'Procesando', cls: 'bg-yellow-100 text-yellow-800' },
+  pendiente:   { label: 'Pendiente',  cls: 'bg-gray-100 text-gray-600' },
+  pending:     { label: 'Pendiente',  cls: 'bg-gray-100 text-gray-600' },
+  error:       { label: 'Error',      cls: 'bg-red-100 text-red-800' },
 };
 
-function ResultRenderer({ resultado }) {
-  if (!resultado) return null;
+// Limpia strings con doble-encoding: "\"## ..." → "## ..."
+function cleanResultadoStr(raw) {
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === 'string') return parsed;
+    if (typeof parsed === 'object' && parsed !== null) return parsed;
+  } catch { /* not JSON */ }
+  return raw.replace(/^"|"$/g, '');
+}
 
+// Renderiza markdown con estilos Tailwind
+function MarkdownContent({ text }) {
+  return (
+    <div className="prose prose-sm max-w-none text-gray-800 leading-relaxed">
+      <ReactMarkdown
+        components={{
+          h1: ({ children }) => (
+            <h1 className="text-xl font-extrabold text-gray-900 mt-6 mb-2 border-b pb-1">{children}</h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="text-base font-bold text-purple-800 mt-5 mb-2 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-500 flex-shrink-0 inline-block" />
+              {children}
+            </h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="text-sm font-semibold text-gray-700 mt-4 mb-1.5 underline underline-offset-2 decoration-purple-300">
+              {children}
+            </h3>
+          ),
+          p: ({ children }) => (
+            <p className="text-sm text-gray-700 mb-2 leading-relaxed">{children}</p>
+          ),
+          ul: ({ children }) => (
+            <ul className="space-y-1 mb-3 pl-1">{children}</ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="space-y-1 mb-3 pl-1 list-decimal list-inside">{children}</ol>
+          ),
+          li: ({ children }) => (
+            <li className="text-sm text-gray-700 flex items-start gap-2">
+              <span className="text-purple-400 flex-shrink-0 mt-1">•</span>
+              <span className="flex-1">{children}</span>
+            </li>
+          ),
+          strong: ({ children }) => (
+            <strong className="font-semibold text-gray-900">{children}</strong>
+          ),
+          em: ({ children }) => (
+            <em className="italic text-gray-600">{children}</em>
+          ),
+          hr: () => (
+            <hr className="my-4 border-purple-100" />
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-4 border-purple-300 pl-4 py-1 my-2 bg-purple-50 rounded-r-lg text-sm text-purple-800 italic">
+              {children}
+            </blockquote>
+          ),
+          code: ({ children }) => (
+            <code className="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>
+          ),
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+// Renderiza resultado estructurado (objeto con campos específicos)
+function StructuredResult({ resultado }) {
   const {
     resumen, summary,
     fortalezas, strengths,
@@ -35,7 +109,8 @@ function ResultRenderer({ resultado }) {
   const patronesList     = patrones_identificados ?? patterns;
   const restEntries      = Object.entries(rest).filter(([, v]) => v !== null && v !== undefined && v !== '');
 
-  const allEmpty = !punteo && !resumenText && !fortalezasList?.length && !mejorasList?.length && !recomendList?.length && !observList?.length && restEntries.length === 0;
+  const allEmpty = !punteo && !resumenText && !fortalezasList?.length && !mejorasList?.length
+                  && !recomendList?.length && !observList?.length && restEntries.length === 0;
   if (allEmpty) return <p className="text-gray-400 text-sm text-center py-4">Sin datos de resultado disponibles</p>;
 
   return (
@@ -54,7 +129,6 @@ function ResultRenderer({ resultado }) {
           </div>
         </div>
       )}
-
       {resumenText && (
         <div>
           <h4 className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
@@ -63,7 +137,6 @@ function ResultRenderer({ resultado }) {
           <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-200">{resumenText}</p>
         </div>
       )}
-
       {fortalezasList?.length > 0 && (
         <div className="bg-green-50 p-4 rounded-xl border border-green-200">
           <h4 className="text-xs font-semibold text-green-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
@@ -78,7 +151,6 @@ function ResultRenderer({ resultado }) {
           </ul>
         </div>
       )}
-
       {mejorasList?.length > 0 && (
         <div className="bg-orange-50 p-4 rounded-xl border border-orange-200">
           <h4 className="text-xs font-semibold text-orange-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
@@ -93,7 +165,6 @@ function ResultRenderer({ resultado }) {
           </ul>
         </div>
       )}
-
       {recomendList?.length > 0 && (
         <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
           <h4 className="text-xs font-semibold text-blue-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
@@ -108,18 +179,14 @@ function ResultRenderer({ resultado }) {
           </ul>
         </div>
       )}
-
       {observList?.length > 0 && (
         <div>
           <h4 className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-2">Observaciones</h4>
           <ul className="space-y-1">
-            {observList.map((obs, i) => (
-              <li key={i} className="text-sm text-gray-700 pl-3">• {obs}</li>
-            ))}
+            {observList.map((obs, i) => <li key={i} className="text-sm text-gray-700 pl-3">• {obs}</li>)}
           </ul>
         </div>
       )}
-
       {patronesList?.length > 0 && (
         <div>
           <h4 className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-2">Patrones Identificados</h4>
@@ -130,7 +197,6 @@ function ResultRenderer({ resultado }) {
           </ul>
         </div>
       )}
-
       {restEntries.map(([key, value]) => (
         <div key={key}>
           <h4 className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-2">{key.replace(/_/g, ' ')}</h4>
@@ -151,9 +217,21 @@ function ResultRenderer({ resultado }) {
   );
 }
 
+// Dispatcher: detecta si resultado es string markdown u objeto estructurado
+function ResultRenderer({ resultado }) {
+  if (!resultado) return null;
+  if (typeof resultado === 'string') {
+    const cleaned = cleanResultadoStr(resultado);
+    if (typeof cleaned === 'object') return <StructuredResult resultado={cleaned} />;
+    return <MarkdownContent text={cleaned} />;
+  }
+  if (typeof resultado === 'object') return <StructuredResult resultado={resultado} />;
+  return null;
+}
+
 export default function AnalisisUsuarioModal({ member, onClose }) {
   const { authToken, showToast } = useApp();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]   = useState(true);
   const [analisis, setAnalisis] = useState(undefined);
 
   useEffect(() => {
@@ -171,7 +249,10 @@ export default function AnalisisUsuarioModal({ member, onClose }) {
     load();
   }, [member.id]);
 
-  const badge = analisis ? (ESTADO_BADGE[analisis.estado] ?? { label: analisis.estado, cls: 'bg-gray-100 text-gray-600' }) : null;
+  const statusKey = analisis?.status || analisis?.estado || '';
+  const badge     = ESTADO_BADGE[statusKey] ?? (statusKey ? { label: statusKey, cls: 'bg-gray-100 text-gray-600' } : null);
+  const isWorking = ['procesando', 'processing', 'pendiente', 'pending'].includes(statusKey);
+  const isError   = statusKey === 'error';
 
   return (
     <div
@@ -225,18 +306,21 @@ export default function AnalisisUsuarioModal({ member, onClose }) {
                 )}
               </div>
 
-              {(analisis.estado === 'procesando' || analisis.estado === 'pendiente') ? (
+              {/* Cuerpo del análisis */}
+              {isWorking ? (
                 <div className="flex items-center gap-3 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
                   <Loader className="w-5 h-5 text-yellow-600 animate-spin flex-shrink-0" />
                   <p className="text-sm text-yellow-800">El análisis está siendo procesado. Vuelve en unos momentos.</p>
                 </div>
-              ) : analisis.estado === 'error' ? (
+              ) : isError ? (
                 <div className="flex items-center gap-3 p-4 bg-red-50 rounded-xl border border-red-200">
                   <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
                   <p className="text-sm text-red-800">Ocurrió un error al procesar el análisis.</p>
                 </div>
-              ) : (
+              ) : analisis.resultado ? (
                 <ResultRenderer resultado={analisis.resultado} />
+              ) : (
+                <p className="text-sm text-gray-400 text-center py-6">Sin resultados disponibles</p>
               )}
             </div>
           )}
