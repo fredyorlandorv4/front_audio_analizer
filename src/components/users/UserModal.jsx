@@ -10,11 +10,20 @@ export default function UserModal({ user, onSave, onClose }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Extrae string de campos que la API puede devolver como objeto { id, name, description }
+  const safeStr = (val, fallback = '') => {
+    if (val === null || val === undefined) return fallback;
+    if (typeof val === 'object') return val.name || val.nombre || val.description || fallback;
+    return String(val).trim() || fallback;
+  };
+
   useEffect(() => {
     if (user) {
       setFormData({
-        email: user.email || '', nombre: user.nombre || '',
-        rol: user.rol || 'operador', area: user.area || '',
+        email:   user.email  || '',
+        nombre:  safeStr(user.nombre),
+        rol:     safeStr(user.rol, 'operador'),
+        area:    safeStr(user.area),
         password: '', confirmPassword: ''
       });
     }

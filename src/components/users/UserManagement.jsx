@@ -65,12 +65,21 @@ export default function UserManagement() {
   const openCreateModal = () => { setEditingUser(null); setShowUserModal(true); };
   const openEditModal   = (user) => { setEditingUser(user); setShowUserModal(true); };
 
+  // Extrae string de un campo que puede ser objeto { id, name, description } o string plano
+  const safeStr = (val, fallback = '—') => {
+    if (val === null || val === undefined) return fallback;
+    if (typeof val === 'object') return val.name || val.nombre || val.description || fallback;
+    const s = String(val).trim();
+    return s || fallback;
+  };
+
   const ROL_BADGE = {
     admin:    'bg-red-100 text-red-800',
     sup:      'bg-blue-100 text-blue-800',
     operador: 'bg-green-100 text-green-800',
   };
   const ROL_LABEL = { admin: 'Administrador', sup: 'Supervisor', operador: 'Operador' };
+  const rolKey = (rol) => safeStr(rol, '');
 
   // ── Loading ──────────────────────────────────────────────────
   if (loading) {
@@ -148,10 +157,10 @@ export default function UserManagement() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{user.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">{user.area || '—'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">{safeStr(user.area)}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full ${ROL_BADGE[user.rol] || 'bg-gray-100 text-gray-700'}`}>
-                      {ROL_LABEL[user.rol] || user.rol}
+                    <span className={`px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full ${ROL_BADGE[rolKey(user.rol)] || 'bg-gray-100 text-gray-700'}`}>
+                      {ROL_LABEL[rolKey(user.rol)] || safeStr(user.rol)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
