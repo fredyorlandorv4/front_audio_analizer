@@ -1,29 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import { X, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Eye, EyeOff, CheckCircle, AlertCircle, Loader, Building2 } from 'lucide-react';
+import { areasAPI } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 
 export default function UserModal({ user, onSave, onClose }) {
-  const { showToast } = useApp(); // ✅ del contexto
+  const { authToken, showToast } = useApp();
   const [formData, setFormData] = useState({
     email: '', nombre: '', rol: 'operador', area: '', password: '', confirmPassword: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Extrae string de campos que la API puede devolver como objeto { id, name, description }
-  const safeStr = (val, fallback = '') => {
-    if (val === null || val === undefined) return fallback;
-    if (typeof val === 'object') return val.name || val.nombre || val.description || fallback;
-    return String(val).trim() || fallback;
+  // Áreas cargadas desde el API
+  const [areas, setAreas]             = useState([]);
+  const [loadingAreas, setLoadingAreas] = useState(true);
+
+  // Extrae el ID de un campo que puede ser objeto { id, name, description } o un valor primitivo
+  const areaId = (val) => {
+    if (val === null || val === undefined) return '';
+    if (typeof val === 'object') return String(val.id ?? '');
+    return String(val);
   };
 
+  // Carga áreas al montar
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await areasAPI.getAll(authToken);
+        setAreas(Array.isArray(data) ? data : []);
+      } catch {
+        showToast('No se pudieron cargar las áreas', 'error');
+      } finally {
+        setLoadingAreas(false);
+      }
+    };
+    load();
+  }, []);
+
+  // Pre-rellena el formulario al editar
   useEffect(() => {
     if (user) {
       setFormData({
-        email:   user.email  || '',
-        nombre:  safeStr(user.nombre),
-        rol:     safeStr(user.rol, 'operador'),
-        area:    safeStr(user.area),
+        email:    user.email  || '',
+        nombre:   typeof user.nombre === 'object' ? (user.nombre?.name || user.nombre?.nombre || '') : (user.nombre || ''),
+        rol:      typeof user.rol    === 'object' ? (user.rol?.name    || user.rol?.nombre    || 'operador') : (user.rol || 'operador'),
+        area:     areaId(user.area),  // guarda el ID del área
         password: '', confirmPassword: ''
       });
     }
@@ -48,12 +69,17 @@ export default function UserModal({ user, onSave, onClose }) {
         return;
       }
     }
-    const userData = { email: formData.email, nombre: formData.nombre, rol: formData.rol, area: formData.area };
+    const userData = {
+      email:   formData.email,
+      nombre:  formData.nombre,
+      rol:     formData.rol,
+      area_id: parseInt(formData.area, 10)   // envía el ID numérico
+    };
     if (formData.password) userData.password = formData.password;
     onSave(userData);
   };
 
-  const passwordsMatch    = formData.password && formData.confirmPassword && formData.password === formData.confirmPassword;
+  const passwordsMatch     = formData.password && formData.confirmPassword && formData.password === formData.confirmPassword;
   const passwordsDontMatch = formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword;
 
   return (
@@ -68,24 +94,55 @@ export default function UserModal({ user, onSave, onClose }) {
         </div>
 
         <div className="p-6 space-y-4">
+          {/* Nombre */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Nombre completo <span className="text-red-500">*</span></label>
             <input type="text" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               placeholder="Ej: Juan Pérez" />
           </div>
+
+          {/* Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Email <span className="text-red-500">*</span></label>
             <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               placeholder="juan@ejemplo.com" />
           </div>
+
+          {/* Área — select dinámico */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Área <span className="text-red-500">*</span></label>
-            <input type="text" value={formData.area} onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              placeholder="Ej: Ventas" />
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+              <Building2 className="w-4 h-4 text-purple-600" />
+              Área <span className="text-red-500">*</span>
+            </label>
+            {loadingAreas ? (
+              <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
+                <Loader className="w-4 h-4 animate-spin" /> Cargando áreas...
+              </div>
+            ) : areas.length === 0 ? (
+              <p className="text-sm text-gray-400 italic">No hay áreas disponibles</p>
+            ) : (
+              <select
+                value={formData.area}
+                onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm
+                  ${!formData.area ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+              >
+                <option value="">— Selecciona un área —</option>
+                {areas.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name || a.nombre}
+                  </option>
+                ))}
+              </select>
+            )}
+            {!formData.area && !loadingAreas && (
+              <p className="mt-1 text-xs text-red-500">⚠ Selecciona un área</p>
+            )}
           </div>
+
+          {/* Contraseña */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Contraseña {user ? <span className="text-gray-500 text-xs">(dejar en blanco para no cambiar)</span> : <span className="text-red-500">*</span>}
@@ -101,6 +158,8 @@ export default function UserModal({ user, onSave, onClose }) {
               </button>
             </div>
           </div>
+
+          {/* Confirmar contraseña */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Confirmar contraseña {!user && <span className="text-red-500">*</span>}
@@ -118,6 +177,8 @@ export default function UserModal({ user, onSave, onClose }) {
             {passwordsDontMatch && <p className="mt-1 text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3 h-3" />Las contraseñas no coinciden</p>}
             {passwordsMatch    && <p className="mt-1 text-xs text-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" />Las contraseñas coinciden</p>}
           </div>
+
+          {/* Rol */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Rol <span className="text-red-500">*</span></label>
             <select value={formData.rol} onChange={(e) => setFormData({ ...formData, rol: e.target.value })}
@@ -127,8 +188,8 @@ export default function UserModal({ user, onSave, onClose }) {
               <option value="admin">Administrador</option>
             </select>
             <p className="mt-1 text-xs text-gray-500">
-              {formData.rol === 'admin' && '• Acceso total al sistema'}
-              {formData.rol === 'sup'   && '• Puede gestionar usuarios y audios'}
+              {formData.rol === 'admin'    && '• Acceso total al sistema'}
+              {formData.rol === 'sup'      && '• Puede gestionar usuarios y audios'}
               {formData.rol === 'operador' && '• Solo puede gestionar audios'}
             </p>
           </div>

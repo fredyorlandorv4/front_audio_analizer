@@ -58,7 +58,7 @@ export default function MemberDetail({ member, onClose }) {
             <div>
               <h2 className="text-lg font-bold text-white">{member.nombre || member.email}</h2>
               {member.nombre && <p className="text-purple-200 text-sm">{member.email}</p>}
-              {member.area  && <p className="text-purple-200 text-xs mt-0.5">Área: {member.area}</p>}
+              {member.area  && <p className="text-purple-200 text-xs mt-0.5">Área: {typeof member.area === 'object' ? (member.area.name || member.area.nombre || '') : member.area}</p>}
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors">
