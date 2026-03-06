@@ -172,7 +172,7 @@ export const teamsAPI = {
 // Áreas
 export const areasAPI = {
   getAll: async (token) => {
-    const response = await authFetch(`${API_BASE_URL}/areas/`, {
+    const response = await authFetch(`${API_BASE_URL}/areas`, {
       headers: getAuthHeaders(token)
     });
     if (!response.ok) throw new Error('Error al cargar áreas');
@@ -183,7 +183,7 @@ export const areasAPI = {
 // Categorias
 export const categoriasAPI = {
   getAll: async (token) => {
-    const response = await authFetch(`${API_BASE_URL}/categorias/`, {
+    const response = await authFetch(`${API_BASE_URL}/categorias`, {
       headers: getAuthHeaders(token)
     });
     if (!response.ok) throw new Error('Error al cargar categorías');
