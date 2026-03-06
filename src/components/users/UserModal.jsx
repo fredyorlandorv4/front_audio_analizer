@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Eye, EyeOff, CheckCircle, AlertCircle, Loader, Building2 } from 'lucide-react';
-import { areasAPI } from '../../services/api';
+import { areasAPI, rolesAPI } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 
 export default function UserModal({ user, onSave, onClose }) {
@@ -11,10 +11,13 @@ export default function UserModal({ user, onSave, onClose }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Áreas cargadas desde el API
+  // Áreas y Roles cargados desde el API
   const [areas, setAreas]             = useState([]);
   const [loadingAreas, setLoadingAreas] = useState(true);
   const [areasError, setAreasError]   = useState(false);
+
+  const [roles, setRoles]             = useState([]);
+  const [loadingRoles, setLoadingRoles] = useState(true);
 
   // Extrae el ID de un campo que puede ser objeto { id, name, description } o un valor primitivo
   const areaId = (val) => {
@@ -23,9 +26,9 @@ export default function UserModal({ user, onSave, onClose }) {
     return String(val);
   };
 
-  // Carga áreas al montar
+  // Carga áreas y roles al montar
   useEffect(() => {
-    const load = async () => {
+    const loadAreas = async () => {
       try {
         const data = await areasAPI.getAll(authToken);
         const list = Array.isArray(data) ? data : [];
@@ -37,7 +40,23 @@ export default function UserModal({ user, onSave, onClose }) {
         setLoadingAreas(false);
       }
     };
-    load();
+    const loadRoles = async () => {
+      try {
+        const data = await rolesAPI.getAll(authToken);
+        setRoles(Array.isArray(data) ? data : []);
+      } catch {
+        // fallback: lista hardcodeada si el endpoint falla
+        setRoles([
+          { id: 1, name: 'admin' },
+          { id: 2, name: 'supervisor' },
+          { id: 3, name: 'operador' },
+        ]);
+      } finally {
+        setLoadingRoles(false);
+      }
+    };
+    loadAreas();
+    loadRoles();
   }, []);
 
   // Pre-rellena el formulario al editar
@@ -191,19 +210,33 @@ export default function UserModal({ user, onSave, onClose }) {
             {passwordsMatch    && <p className="mt-1 text-xs text-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" />Las contraseñas coinciden</p>}
           </div>
 
-          {/* Rol */}
+          {/* Rol — select dinámico desde GET /roles */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Rol <span className="text-red-500">*</span></label>
-            <select value={formData.rol} onChange={(e) => setFormData({ ...formData, rol: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-              <option value="operador">Operador</option>
-              <option value="sup">Supervisor</option>
-              <option value="admin">Administrador</option>
-            </select>
+            {loadingRoles ? (
+              <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
+                <Loader className="w-4 h-4 animate-spin" /> Cargando roles...
+              </div>
+            ) : (
+              <select
+                value={formData.rol}
+                onChange={(e) => setFormData({ ...formData, rol: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              >
+                {roles.map((r) => (
+                  <option key={r.id} value={r.name}>
+                    {r.name === 'admin'      ? 'Administrador'
+                     : r.name === 'supervisor' ? 'Supervisor'
+                     : r.name === 'operador'   ? 'Operador'
+                     : r.name}
+                  </option>
+                ))}
+              </select>
+            )}
             <p className="mt-1 text-xs text-gray-500">
-              {formData.rol === 'admin'    && '• Acceso total al sistema'}
-              {formData.rol === 'sup'      && '• Puede gestionar usuarios y audios'}
-              {formData.rol === 'operador' && '• Solo puede gestionar audios'}
+              {formData.rol === 'admin'      && '• Acceso total al sistema'}
+              {formData.rol === 'supervisor' && '• Puede gestionar usuarios y audios'}
+              {formData.rol === 'operador'   && '• Solo puede gestionar audios'}
             </p>
           </div>
         </div>

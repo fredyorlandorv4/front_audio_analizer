@@ -169,7 +169,18 @@ export const teamsAPI = {
   }
 };
 
-// Áreas/Roles de negocio (GET /roles devuelve {id, name, description})
+// Roles/niveles de acceso (GET /roles → [{id, name}]: admin, supervisor, operador)
+export const rolesAPI = {
+  getAll: async (token) => {
+    const response = await authFetch(`${API_BASE_URL}/roles`, {
+      headers: getAuthHeaders(token)
+    });
+    if (!response.ok) throw new Error('Error al cargar roles');
+    return response.json();
+  }
+};
+
+// Áreas de negocio (GET /areas → [{id, name}]: cobros, comercial, etc.)
 export const areasAPI = {
   getAll: async (token) => {
     const response = await authFetch(`${API_BASE_URL}/areas`, {

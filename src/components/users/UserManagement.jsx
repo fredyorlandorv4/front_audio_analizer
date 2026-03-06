@@ -74,11 +74,17 @@ export default function UserManagement() {
   };
 
   const ROL_BADGE = {
-    admin:    'bg-red-100 text-red-800',
-    sup:      'bg-blue-100 text-blue-800',
-    operador: 'bg-green-100 text-green-800',
+    admin:      'bg-red-100 text-red-800',
+    sup:        'bg-blue-100 text-blue-800',
+    supervisor: 'bg-blue-100 text-blue-800',
+    operador:   'bg-green-100 text-green-800',
   };
-  const ROL_LABEL = { admin: 'Administrador', sup: 'Supervisor', operador: 'Operador' };
+  const ROL_LABEL = {
+    admin:      'Administrador',
+    sup:        'Supervisor',
+    supervisor: 'Supervisor',
+    operador:   'Operador',
+  };
   const rolKey = (rol) => safeStr(rol, '');
 
   // ── Loading ──────────────────────────────────────────────────
