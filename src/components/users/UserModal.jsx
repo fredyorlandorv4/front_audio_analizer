@@ -14,6 +14,7 @@ export default function UserModal({ user, onSave, onClose }) {
   // Áreas cargadas desde el API
   const [areas, setAreas]             = useState([]);
   const [loadingAreas, setLoadingAreas] = useState(true);
+  const [areasError, setAreasError]   = useState(false);
 
   // Extrae el ID de un campo que puede ser objeto { id, name, description } o un valor primitivo
   const areaId = (val) => {
@@ -27,9 +28,11 @@ export default function UserModal({ user, onSave, onClose }) {
     const load = async () => {
       try {
         const data = await areasAPI.getAll(authToken);
-        setAreas(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : [];
+        setAreas(list);
+        if (list.length === 0) setAreasError(true);
       } catch {
-        showToast('No se pudieron cargar las áreas', 'error');
+        setAreasError(true);
       } finally {
         setLoadingAreas(false);
       }
@@ -69,11 +72,15 @@ export default function UserModal({ user, onSave, onClose }) {
         return;
       }
     }
+    // Si hay select con áreas, envía area_id (entero); si es input libre, envía area (string)
+    const areaAsNumber = parseInt(formData.area, 10);
     const userData = {
-      email:   formData.email,
-      nombre:  formData.nombre,
-      rol:     formData.rol,
-      area_id: parseInt(formData.area, 10)   // envía el ID numérico
+      email:  formData.email,
+      nombre: formData.nombre,
+      rol:    formData.rol,
+      ...(areas.length > 0 && !areasError
+        ? { area_id: areaAsNumber }
+        : { area: formData.area })
     };
     if (formData.password) userData.password = formData.password;
     onSave(userData);
@@ -120,9 +127,7 @@ export default function UserModal({ user, onSave, onClose }) {
               <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
                 <Loader className="w-4 h-4 animate-spin" /> Cargando áreas...
               </div>
-            ) : areas.length === 0 ? (
-              <p className="text-sm text-gray-400 italic">No hay áreas disponibles</p>
-            ) : (
+            ) : !areasError && areas.length > 0 ? (
               <select
                 value={formData.area}
                 onChange={(e) => setFormData({ ...formData, area: e.target.value })}
@@ -136,9 +141,17 @@ export default function UserModal({ user, onSave, onClose }) {
                   </option>
                 ))}
               </select>
+            ) : (
+              <input
+                type="text"
+                value={formData.area}
+                onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="Ej: Ventas"
+              />
             )}
             {!formData.area && !loadingAreas && (
-              <p className="mt-1 text-xs text-red-500">⚠ Selecciona un área</p>
+              <p className="mt-1 text-xs text-red-500">⚠ Este campo es obligatorio</p>
             )}
           </div>
 
