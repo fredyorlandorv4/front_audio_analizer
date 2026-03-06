@@ -169,10 +169,10 @@ export const teamsAPI = {
   }
 };
 
-// Áreas
+// Áreas/Roles de negocio (GET /roles devuelve {id, name, description})
 export const areasAPI = {
   getAll: async (token) => {
-    const response = await authFetch(`${API_BASE_URL}/areas/`, {
+    const response = await authFetch(`${API_BASE_URL}/roles`, {
       headers: getAuthHeaders(token)
     });
     if (!response.ok) throw new Error('Error al cargar áreas');
