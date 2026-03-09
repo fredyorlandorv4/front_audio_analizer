@@ -65,7 +65,7 @@ export default function UserModal({ user, onSave, onClose }) {
       setFormData({
         email:    user.email  || '',
         nombre:   typeof user.nombre === 'object' ? (user.nombre?.name || user.nombre?.nombre || '') : (user.nombre || ''),
-        rol:      typeof user.rol    === 'object' ? (user.rol?.name    || user.rol?.nombre    || 'operador') : (user.rol || 'operador'),
+        rol:      (() => { const r = user.role ?? user.rol; return typeof r === 'object' ? (r?.name || r?.nombre || 'operador') : (r || 'operador'); })(),
         area:     areaId(user.area),  // guarda el ID del área
         password: '', confirmPassword: ''
       });

@@ -165,8 +165,8 @@ export default function UserManagement() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{user.email}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">{safeStr(user.area)}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full ${ROL_BADGE[rolKey(user.rol)] || 'bg-gray-100 text-gray-700'}`}>
-                      {ROL_LABEL[rolKey(user.rol)] || safeStr(user.rol)}
+                    <span className={`px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full ${ROL_BADGE[rolKey(user.role ?? user.rol)] || 'bg-gray-100 text-gray-700'}`}>
+                      {ROL_LABEL[rolKey(user.role ?? user.rol)] || safeStr(user.role ?? user.rol)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
