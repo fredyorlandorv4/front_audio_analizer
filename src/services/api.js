@@ -224,7 +224,7 @@ export const audiosAPI = {
     const formData = new FormData();
     formData.append('file', file);
     if (equipoId) formData.append('equipo_id', equipoId);
-    if (userId)   formData.append('user_id', userId);
+    if (userId != null) formData.append('user_id', userId);
     const response = await authFetch(`${API_BASE_URL}/audios`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` },
