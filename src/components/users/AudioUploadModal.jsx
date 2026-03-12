@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   X, Upload, Users, User, CheckCircle, XCircle,
-  Loader, Music, ShieldCheck, Trash2
+  Loader, Music, ShieldCheck, Trash2, Zap
 } from 'lucide-react';
 import { audiosAPI, teamsAPI } from '../../services/api';
 import { formatBytes } from '../../utils/formatters';
@@ -11,18 +11,74 @@ import { useApp } from '../../context/AppContext';
 // Estado por archivo: pending | uploading | success | error
 const FILE_STATUS = { PENDING: 'pending', UPLOADING: 'uploading', SUCCESS: 'success', ERROR: 'error' };
 
+// ── Compresión de audio (Web Audio API, sin dependencias externas) ────────────
+// Convierte un AudioBuffer a WAV mono 16-bit
+function audioBufferToWav(buffer) {
+  const sampleRate  = buffer.sampleRate;
+  const numSamples  = buffer.length;
+  const dataSize    = numSamples * 2; // mono, 16-bit
+  const ab          = new ArrayBuffer(44 + dataSize);
+  const view        = new DataView(ab);
+  const ws = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+
+  ws(0, 'RIFF'); view.setUint32(4, 36 + dataSize, true);
+  ws(8, 'WAVE'); ws(12, 'fmt ');
+  view.setUint32(16, 16, true);   // chunk size
+  view.setUint16(20, 1, true);    // PCM
+  view.setUint16(22, 1, true);    // mono
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  ws(36, 'data'); view.setUint32(40, dataSize, true);
+
+  // Mezcla todos los canales a mono y escribe muestras
+  const channels = Array.from({ length: buffer.numberOfChannels }, (_, i) => buffer.getChannelData(i));
+  let offset = 44;
+  for (let i = 0; i < numSamples; i++) {
+    let sample = channels.reduce((sum, ch) => sum + ch[i], 0) / channels.length;
+    sample = Math.max(-1, Math.min(1, sample));
+    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+    offset += 2;
+  }
+  return new Blob([ab], { type: 'audio/wav' });
+}
+
+// Decodifica y re-renderiza el audio a 16 kHz mono (ideal para voz/llamadas)
+async function compressAudio(file) {
+  const TARGET_RATE = 16000;
+  const arrayBuffer = await file.arrayBuffer();
+  const ctx         = new AudioContext();
+  const decoded     = await ctx.decodeAudioData(arrayBuffer);
+  await ctx.close();
+
+  const numSamples = Math.ceil(decoded.duration * TARGET_RATE);
+  const offline    = new OfflineAudioContext(1, numSamples, TARGET_RATE);
+  const src        = offline.createBufferSource();
+  src.buffer       = decoded;
+  src.connect(offline.destination);
+  src.start(0);
+
+  const rendered = await offline.startRendering();
+  const blob     = audioBufferToWav(rendered);
+  const baseName = file.name.replace(/\.[^/.]+$/, '');
+  return new File([blob], `${baseName}.wav`, { type: 'audio/wav' });
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function AudioUploadModal({ user, onClose }) {
   const { authToken, showToast, userRole } = useApp();
   const isAdmin = userRole === 1;
 
-  const [teams, setTeams]       = useState([]);
+  const [teams, setTeams]             = useState([]);
   const [loadingTeams, setLoadingTeams] = useState(true);
-  const [equipoId, setEquipoId] = useState('');
-  const [fileList, setFileList] = useState([]); // [{ file, id, status, error }]
-  const [uploading, setUploading] = useState(false);
+  const [equipoId, setEquipoId]       = useState('');
+  const [fileList, setFileList]       = useState([]);
+  const [uploading, setUploading]     = useState(false);
+  const [compressEnabled, setCompressEnabled] = useState(false);
   const inputRef = useRef(null);
 
-  const canUpload = (isAdmin || equipoId !== '') && fileList.length > 0 && !uploading;
+  const canUpload    = (isAdmin || equipoId !== '') && fileList.length > 0 && !uploading;
   const pendingFiles = fileList.filter(f => f.status === FILE_STATUS.PENDING);
   const hasPending   = pendingFiles.length > 0;
 
@@ -40,24 +96,17 @@ export default function AudioUploadModal({ user, onClose }) {
     loadTeams();
   }, []);
 
-  const MAX_SIZE = 20 * 1024 * 1024; // 20 MB
-
   const handleFilePick = (e) => {
     const picked = Array.from(e.target.files);
     if (!picked.length) return;
 
     const newEntries = picked
       .filter(f => {
-        // Evitar duplicados por nombre+tamaño
         const isDupe = fileList.some(
           existing => existing.file.name === f.name && existing.file.size === f.size
         );
         if (isDupe) {
           showToast(`"${f.name}" ya está en la lista`, 'warning');
-          return false;
-        }
-        if (f.size > MAX_SIZE) {
-          showToast(`"${f.name}" supera el límite de 20 MB`, 'warning');
           return false;
         }
         return true;
@@ -89,9 +138,18 @@ export default function AudioUploadModal({ user, onClose }) {
     for (const entry of toUpload) {
       updateStatus(entry.id, FILE_STATUS.UPLOADING);
       try {
+        let fileToUpload = entry.file;
+        if (compressEnabled) {
+          try {
+            fileToUpload = await compressAudio(entry.file);
+          } catch {
+            // Si falla la compresión sube el archivo original
+            fileToUpload = entry.file;
+          }
+        }
         await audiosAPI.upload(
           authToken,
-          entry.file,
+          fileToUpload,
           equipoId !== '' ? equipoId : null,
           user.id
         );
@@ -116,7 +174,7 @@ export default function AudioUploadModal({ user, onClose }) {
   };
 
   const statusLabel = (entry) => {
-    if (entry.status === FILE_STATUS.UPLOADING) return <span className="text-xs text-purple-600">Subiendo...</span>;
+    if (entry.status === FILE_STATUS.UPLOADING) return <span className="text-xs text-purple-600">{compressEnabled ? 'Comprimiendo y subiendo...' : 'Subiendo...'}</span>;
     if (entry.status === FILE_STATUS.SUCCESS)   return <span className="text-xs text-green-600 font-medium">Subido</span>;
     if (entry.status === FILE_STATUS.ERROR)     return <span className="text-xs text-red-600">{entry.error || 'Error'}</span>;
     return <span className="text-xs text-gray-400">{formatBytes(entry.file.size)}</span>;
@@ -194,6 +252,32 @@ export default function AudioUploadModal({ user, onClose }) {
             )}
           </div>
 
+          {/* Toggle de compresión */}
+          <div className={`flex items-start gap-3 px-3 py-2.5 rounded-lg border transition-colors
+            ${compressEnabled ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
+            <button
+              type="button"
+              onClick={() => !uploading && setCompressEnabled(v => !v)}
+              disabled={uploading}
+              className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none mt-0.5
+                ${compressEnabled ? 'bg-amber-500' : 'bg-gray-300'} disabled:opacity-50`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out
+                ${compressEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+            </button>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <Zap className={`w-3.5 h-3.5 ${compressEnabled ? 'text-amber-600' : 'text-gray-400'}`} />
+                <span className={`text-sm font-medium ${compressEnabled ? 'text-amber-800' : 'text-gray-600'}`}>
+                  Comprimir antes de subir
+                </span>
+              </div>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Convierte a WAV mono 16 kHz — reduce el tamaño hasta 4×. Recomendado para grabaciones de voz.
+              </p>
+            </div>
+          </div>
+
           {/* Drop zone / selector */}
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
@@ -206,7 +290,7 @@ export default function AudioUploadModal({ user, onClose }) {
             >
               <Upload className="w-8 h-8 text-gray-300 mb-2" />
               <span className="text-sm font-medium text-gray-600">Haz clic para agregar archivos</span>
-              <span className="text-xs text-gray-400 mt-1">MP3, WAV, OGG · Máx. 20 MB por archivo · Selección múltiple</span>
+              <span className="text-xs text-gray-400 mt-1">MP3, WAV, OGG · Selección múltiple</span>
               <input
                 ref={inputRef}
                 type="file"
@@ -286,7 +370,7 @@ export default function AudioUploadModal({ user, onClose }) {
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {uploading ? (
-              <><Loader className="w-4 h-4 animate-spin" />Subiendo...</>
+              <><Loader className="w-4 h-4 animate-spin" />{compressEnabled ? 'Procesando...' : 'Subiendo...'}</>
             ) : (
               <><Upload className="w-4 h-4" />Subir {hasPending ? `${pendingFiles.length} archivo(s)` : ''}</>
             )}
