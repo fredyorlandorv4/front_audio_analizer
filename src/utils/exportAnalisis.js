@@ -2,8 +2,8 @@
 // Utilidades de exportación (PDF y CSV) para modales de análisis
 import { marked } from 'marked';
 
-// Configuración de marked: no sanitiza (confiamos en nuestros datos)
-marked.setOptions({ breaks: true, gfm: true });
+// Configuración de marked (v5+ compatible)
+marked.use({ breaks: true, gfm: true });
 
 // ── CSV ───────────────────────────────────────────────────────────────────────
 
@@ -108,7 +108,7 @@ export function exportAsPDF(title, subtitle, resultado, metaItems = []) {
 <html lang="es">
 <head>
   <meta charset="UTF-8"/>
-  <title>${title}</title>
+  <title>${title}${subtitle ? ' — ' + subtitle : ''}</title>
   <style>
     @page { size: A4; margin: 20mm 18mm; }
     * { box-sizing: border-box; }
@@ -144,12 +144,22 @@ export function exportAsPDF(title, subtitle, resultado, metaItems = []) {
   ${metaHTML}
   ${buildBodyHTML(resultado)}
   <div class="footer">Exportado el ${new Date().toLocaleDateString('es-GT', { day:'2-digit', month:'long', year:'numeric' })}</div>
-  <script>window.onload = () => { window.print(); }<\/script>
 </body>
 </html>`;
 
-  const win = window.open('', '_blank');
-  if (!win) { alert('Permite ventanas emergentes para exportar el PDF.'); return; }
-  win.document.write(html);
-  win.document.close();
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;width:0;height:0;border:0;opacity:0;';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentDocument || iframe.contentWindow.document;
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  iframe.contentWindow.onload = () => {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    iframe.contentWindow.onafterprint = () => iframe.remove();
+    setTimeout(() => { if (iframe.parentNode) iframe.remove(); }, 60_000);
+  };
 }
