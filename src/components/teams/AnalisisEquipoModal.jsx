@@ -114,6 +114,15 @@ const FIELD_LABEL = {
 };
 const toLabel = (key) => FIELD_LABEL[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
+// Renderiza un string: si tiene saltos de línea o sintaxis markdown → MarkdownContent
+function MdOrText({ text }) {
+  const s = String(text);
+  if (s.includes('\n') || s.includes('**') || s.includes('##') || s.includes('- ')) {
+    return <MarkdownContent text={s} />;
+  }
+  return <span className="text-sm text-gray-700">{s}</span>;
+}
+
 function NestedValue({ value }) {
   if (isEmptyValue(value)) return null;
   if (Array.isArray(value)) {
@@ -123,7 +132,7 @@ function NestedValue({ value }) {
           {value.map((item, i) => (
             <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
               <span className="text-indigo-400 flex-shrink-0 mt-0.5">•</span>
-              <span>{String(item)}</span>
+              <MdOrText text={item} />
             </li>
           ))}
         </ul>
@@ -145,13 +154,13 @@ function NestedValue({ value }) {
         {Object.entries(value).filter(([, v]) => !isEmptyValue(v)).map(([k, v]) => (
           <div key={k}>
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{toLabel(k)}: </span>
-            {typeof v === 'object' ? <NestedValue value={v} /> : <span className="text-sm text-gray-700">{String(v)}</span>}
+            {typeof v === 'object' ? <NestedValue value={v} /> : <MdOrText text={v} />}
           </div>
         ))}
       </div>
     );
   }
-  return <p className="text-sm text-gray-700 mt-1">{String(value)}</p>;
+  return <MarkdownContent text={String(value)} />;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -200,7 +209,9 @@ function StructuredResult({ resultado }) {
           <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
             <BarChart2 className="w-3.5 h-3.5" />Resumen Grupal
           </h4>
-          <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-200">{resumenText}</p>
+          <div className="text-sm text-gray-700 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <MarkdownContent text={resumenText} />
+          </div>
         </div>
       )}
       {fortalezasList?.length > 0 && (
