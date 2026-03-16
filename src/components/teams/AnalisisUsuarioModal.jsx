@@ -22,10 +22,12 @@ const ESTADO_BADGE = {
 function cleanResultadoStr(raw) {
   try {
     const parsed = JSON.parse(raw);
+    // JSON.parse convierte \n a saltos reales automáticamente
     if (typeof parsed === 'string') return parsed;
     if (typeof parsed === 'object' && parsed !== null) return parsed;
   } catch { /* not JSON */ }
-  return raw.replace(/^"|"$/g, '');
+  // Si no es JSON válido, convertir \n literales a saltos reales y quitar comillas
+  return raw.replace(/^"|"$/g, '').replace(/\\n/g, '\n').replace(/\\t/g, '\t');
 }
 
 // Renderiza markdown con estilos Tailwind
@@ -410,7 +412,7 @@ export default function AnalisisUsuarioModal({ member, onClose }) {
                   onClick={() => exportAsPDF(
                     'Análisis Individual',
                     member.nombre || member.email,
-                    analisis.resultado,
+                    typeof analisis.resultado === 'string' ? cleanResultadoStr(analisis.resultado) : analisis.resultado,
                     [['Usuario', member.nombre || member.email], ['Fecha', formatDate(analisis.created_at)], ['Audios analizados', analisis.total_audios_analizados ?? '—']]
                   )}
                   className="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 text-sm font-medium"
@@ -419,7 +421,7 @@ export default function AnalisisUsuarioModal({ member, onClose }) {
                 </button>
                 <button
                   onClick={() => exportAsCSV(
-                    analisis.resultado,
+                    typeof analisis.resultado === 'string' ? cleanResultadoStr(analisis.resultado) : analisis.resultado,
                     `analisis_${(member.nombre || member.email).replace(/\s+/g, '_')}.csv`,
                     [['usuario', member.nombre || member.email], ['fecha', formatDate(analisis.created_at)], ['audios_analizados', analisis.total_audios_analizados ?? '']]
                   )}

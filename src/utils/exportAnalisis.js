@@ -64,7 +64,7 @@ function renderValueHTML(value, depth = 0) {
     // Array de primitivos → lista simple
     if (value.every(i => typeof i !== 'object' || i === null)) {
       return `<ul>${value.map(i =>
-        `<li>${typeof i === 'string' ? marked.parseInline(i) : String(i)}</li>`
+        `<li>${typeof i === 'string' ? marked.parseInline(normalizeStr(i)) : String(i)}</li>`
       ).join('')}</ul>`;
     }
     // Array de objetos → cada objeto como sub-bloque
@@ -86,21 +86,27 @@ function renderValueHTML(value, depth = 0) {
           <span style="font-weight:700;color:#374151;font-size:9.5pt">${label}:</span>
           ${isComplex
             ? `<div style="margin-top:3px;margin-left:10px">${renderValueHTML(val, depth + 1)}</div>`
-            : `<span style="margin-left:4px">${typeof val === 'string' ? marked.parseInline(val) : String(val)}</span>`
+            : `<span style="margin-left:4px">${typeof val === 'string' ? marked.parseInline(normalizeStr(val)) : String(val)}</span>`
           }
         </div>`;
       }).join('');
   }
 
   // String / primitivo → markdown ——————————————————————————
-  return marked.parse(String(value));
+  return marked.parse(normalizeStr(String(value)));
+}
+
+// Convierte \n literales (backslash+n) en saltos de línea reales
+// para que marked los trate como newlines al parsear markdown
+function normalizeStr(s) {
+  return typeof s === 'string' ? s.replace(/\\n/g, '\n').replace(/\\t/g, '\t') : s;
 }
 
 function buildBodyHTML(resultado) {
   if (!resultado) return '<p>Sin datos disponibles.</p>';
 
   if (typeof resultado === 'string') {
-    return `<div class="section"><div class="content">${renderValueHTML(resultado)}</div></div>`;
+    return `<div class="section"><div class="content">${renderValueHTML(normalizeStr(resultado))}</div></div>`;
   }
 
   const labelMap = {
