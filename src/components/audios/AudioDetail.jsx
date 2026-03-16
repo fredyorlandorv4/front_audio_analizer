@@ -36,23 +36,59 @@ function fieldLabel(key) {
     title: 'Título', summary: 'Resumen', transcription: 'Transcripción',
     transcript: 'Transcripción', sentiment: 'Sentimiento', sentimiento: 'Sentimiento',
     score: 'Puntaje', punteo: 'Puntaje', punteo_promedio: 'Puntaje Promedio',
+    quality_score: 'Puntaje de Calidad',
     keywords: 'Palabras Clave', palabras_clave: 'Palabras Clave',
     topics: 'Temas', temas: 'Temas', language: 'Idioma', idioma: 'Idioma',
     duration: 'Duración', duracion: 'Duración',
+    main_points: 'Puntos Principales', action_items: 'Acciones a Tomar',
+    follow_up: 'Seguimiento', stories: 'Historias', references: 'Referencias',
+    arguments: 'Argumentos', related_topics: 'Temas Relacionados',
     fortalezas: 'Fortalezas', strengths: 'Fortalezas',
-    areas_de_mejora: 'Áreas de Mejora', recomendaciones: 'Recomendaciones',
-    observaciones: 'Observaciones', notas: 'Notas', notes: 'Notas',
+    areas_de_mejora: 'Áreas de Mejora', areas_for_improvement: 'Áreas de Mejora',
+    recomendaciones: 'Recomendaciones', suggested_phrases: 'Frases Sugeridas',
+    observations: 'Observaciones', observaciones: 'Observaciones',
+    compliance_flags: 'Alertas de Cumplimiento', next_steps: 'Próximos Pasos',
+    supervisor_coaching: 'Coaching al Supervisor',
+    rationale: 'Justificación', notas: 'Notas', notes: 'Notas',
   };
   return map[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-// Renderiza un campo individual de audio.extra
-function ExtraField({ label, value }) {
-  if (value === null || value === undefined || value === '') return null;
+// Devuelve true si el valor es vacío o un placeholder sin contenido real
+function isEmptyValue(value) {
+  if (value === null || value === undefined || value === '') return true;
+  if (Array.isArray(value) && value.length === 0) return true;
+  if (Array.isArray(value) && value.every(i => typeof i === 'string' && i.toLowerCase().includes('nothing found'))) return true;
+  return false;
+}
+
+// Renderiza un campo individual de audio.extra (recursivo para objetos anidados)
+function ExtraField({ label, value, depth = 0 }) {
+  if (isEmptyValue(value)) return null;
+
+  // Objeto anidado → renderiza cada sub-clave como sub-sección
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    return (
+      <div className={depth > 0 ? 'pl-3 border-l-2 border-purple-100 space-y-3' : ''}>
+        {depth === 0 && (
+          <h4 className="text-sm font-semibold text-purple-700 uppercase tracking-wide mb-2">{label}</h4>
+        )}
+        <div className="space-y-3">
+          {Object.entries(value)
+            .filter(([, v]) => !isEmptyValue(v))
+            .map(([k, v]) => (
+              <ExtraField key={k} label={fieldLabel(k)} value={v} depth={depth + 1} />
+            ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <h4 className="text-sm font-semibold text-purple-700 uppercase tracking-wide mb-1.5">{label}</h4>
+      <h4 className={`font-semibold uppercase tracking-wide mb-1.5 ${depth > 0 ? 'text-xs text-gray-500' : 'text-sm text-purple-700'}`}>
+        {label}
+      </h4>
       {Array.isArray(value) ? (
         <ul className="space-y-1">
           {value.map((item, i) => (
@@ -62,10 +98,6 @@ function ExtraField({ label, value }) {
             </li>
           ))}
         </ul>
-      ) : typeof value === 'object' ? (
-        <pre className="text-xs bg-gray-50 p-3 rounded-lg overflow-auto border border-gray-200 whitespace-pre-wrap">
-          {JSON.stringify(value, null, 2)}
-        </pre>
       ) : typeof value === 'string' && value.includes('\n') ? (
         <div className="bg-gray-50 rounded-lg p-4 border border-gray-200"><MdText text={value} /></div>
       ) : (
@@ -212,7 +244,7 @@ export default function AudioDetail({
                 <MdText text={audio.extra} />
               ) : (
                 Object.entries(audio.extra)
-                  .filter(([, v]) => v !== null && v !== undefined && v !== '')
+                  .filter(([, v]) => !isEmptyValue(v))
                   .map(([key, value]) => (
                     <ExtraField key={key} label={fieldLabel(key)} value={value} />
                   ))

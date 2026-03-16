@@ -58,13 +58,41 @@ export function exportAsCSV(resultado, filename, metaRows = []) {
 
 // ── PDF (impresión del navegador) ─────────────────────────────────────────────
 
-function renderValueHTML(value) {
+function renderValueHTML(value, depth = 0) {
+  // Array —————————————————————————————————————————————————
   if (Array.isArray(value)) {
-    return `<ul>${value.map(i => `<li>${typeof i === 'string' ? marked.parseInline(i) : JSON.stringify(i)}</li>`).join('')}</ul>`;
+    // Array de primitivos → lista simple
+    if (value.every(i => typeof i !== 'object' || i === null)) {
+      return `<ul>${value.map(i =>
+        `<li>${typeof i === 'string' ? marked.parseInline(i) : String(i)}</li>`
+      ).join('')}</ul>`;
+    }
+    // Array de objetos → cada objeto como sub-bloque
+    return value.map(item =>
+      `<div style="margin-bottom:6px;padding-left:${depth > 0 ? 10 : 0}px;border-left:${depth > 0 ? '2px solid #e9d5ff' : 'none'};padding-left:${depth > 0 ? 8 : 0}px">
+        ${renderValueHTML(item, depth + 1)}
+      </div>`
+    ).join('');
   }
+
+  // Objeto anidado → clave: valor recursivo ————————————————
   if (typeof value === 'object' && value !== null) {
-    return `<pre>${JSON.stringify(value, null, 2)}</pre>`;
+    return Object.entries(value)
+      .filter(([, v]) => v !== null && v !== undefined && v !== '')
+      .map(([key, val]) => {
+        const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const isComplex = typeof val === 'object' && val !== null;
+        return `<div style="margin-bottom:5px">
+          <span style="font-weight:700;color:#374151;font-size:9.5pt">${label}:</span>
+          ${isComplex
+            ? `<div style="margin-top:3px;margin-left:10px">${renderValueHTML(val, depth + 1)}</div>`
+            : `<span style="margin-left:4px">${typeof val === 'string' ? marked.parseInline(val) : String(val)}</span>`
+          }
+        </div>`;
+      }).join('');
   }
+
+  // String / primitivo → markdown ——————————————————————————
   return marked.parse(String(value));
 }
 
@@ -79,15 +107,31 @@ function buildBodyHTML(resultado) {
     title: 'Título', summary: 'Resumen', transcription: 'Transcripción',
     transcript: 'Transcripción', sentiment: 'Sentimiento', sentimiento: 'Sentimiento',
     score: 'Puntaje', punteo: 'Puntaje', punteo_promedio: 'Puntaje Promedio',
+    quality_score: 'Puntaje de Calidad',
     keywords: 'Palabras Clave', palabras_clave: 'Palabras Clave',
     topics: 'Temas', temas: 'Temas', language: 'Idioma', idioma: 'Idioma',
+    main_points: 'Puntos Principales', action_items: 'Acciones a Tomar',
+    follow_up: 'Seguimiento', stories: 'Historias', references: 'Referencias',
+    arguments: 'Argumentos', related_topics: 'Temas Relacionados',
     fortalezas: 'Fortalezas', strengths: 'Fortalezas',
-    areas_de_mejora: 'Áreas de Mejora', recomendaciones: 'Recomendaciones',
-    observaciones: 'Observaciones', resumen: 'Resumen', resultado: 'Resultado',
+    areas_de_mejora: 'Áreas de Mejora', areas_for_improvement: 'Áreas de Mejora',
+    recomendaciones: 'Recomendaciones', suggested_phrases: 'Frases Sugeridas',
+    observations: 'Observaciones', observaciones: 'Observaciones',
+    compliance_flags: 'Alertas de Cumplimiento', next_steps: 'Próximos Pasos',
+    supervisor_coaching: 'Coaching al Supervisor',
+    rationale: 'Justificación', resumen: 'Resumen', resultado: 'Resultado',
+  };
+
+  // Filtra valores vacíos y arrays que sólo contienen placeholders sin contenido
+  const isEmpty = (v) => {
+    if (v === null || v === undefined || v === '') return true;
+    if (Array.isArray(v) && v.length === 0) return true;
+    if (Array.isArray(v) && v.every(i => typeof i === 'string' && i.toLowerCase().includes('nothing found'))) return true;
+    return false;
   };
 
   return Object.entries(resultado)
-    .filter(([, v]) => v !== null && v !== undefined && v !== '')
+    .filter(([, v]) => !isEmpty(v))
     .map(([key, value]) => {
       const label = labelMap[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       return `
