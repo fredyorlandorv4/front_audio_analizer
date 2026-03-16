@@ -122,8 +122,10 @@ export function exportAsPDF(title, subtitle, resultado, metaItems = []) {
                      letter-spacing: 0.05em; color: #7c3aed; border-bottom: 1px solid #e9d5ff;
                      padding-bottom: 3px; margin-bottom: 6px; }
     .content { font-size: 10.5pt; color: #374151; line-height: 1.6; }
-    .content h2 { font-size: 12pt; font-weight: 600; color: #1f2937; margin: 8px 0 4px; }
-    .content h3 { font-size: 11pt; font-weight: 600; color: #374151; margin: 6px 0 3px; }
+    .content h1 { font-size: 15pt; font-weight: 700; color: #4c1d95; margin: 12px 0 6px; border-bottom: 1px solid #e9d5ff; padding-bottom: 4px; }
+    .content h2 { font-size: 13pt; font-weight: 700; color: #6d28d9; margin: 10px 0 5px; }
+    .content h3 { font-size: 11.5pt; font-weight: 700; color: #1f2937; margin: 8px 0 4px; }
+    .content h4 { font-size: 10.5pt; font-weight: 700; color: #374151; margin: 6px 0 3px; text-transform: uppercase; letter-spacing: 0.03em; }
     .content ul { padding-left: 18px; margin: 4px 0; }
     .content li { margin-bottom: 3px; }
     .content pre { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px;
@@ -144,8 +146,23 @@ export function exportAsPDF(title, subtitle, resultado, metaItems = []) {
   ${metaHTML}
   ${buildBodyHTML(resultado)}
   <div class="footer">Exportado el ${new Date().toLocaleDateString('es-GT', { day:'2-digit', month:'long', year:'numeric' })}</div>
+  <script>window.onload = () => window.print();<\/script>
 </body>
 </html>`;
+
+  // El browser usa document.title de la página PADRE como nombre del PDF
+  const pdfTitle = `${title}${subtitle ? ' — ' + subtitle : ''}`;
+  const originalTitle = document.title;
+  document.title = pdfTitle;
+
+  const cleanup = () => {
+    document.title = originalTitle;
+    if (iframe.parentNode) iframe.remove();
+  };
+
+  // Restaurar título cuando el usuario cierre el diálogo de impresión
+  window.addEventListener('afterprint', cleanup, { once: true });
+  setTimeout(cleanup, 60_000); // fallback por si afterprint no dispara
 
   const iframe = document.createElement('iframe');
   iframe.style.cssText = 'position:fixed;width:0;height:0;border:0;opacity:0;';
@@ -155,11 +172,4 @@ export function exportAsPDF(title, subtitle, resultado, metaItems = []) {
   doc.open();
   doc.write(html);
   doc.close();
-
-  iframe.contentWindow.onload = () => {
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-    iframe.contentWindow.onafterprint = () => iframe.remove();
-    setTimeout(() => { if (iframe.parentNode) iframe.remove(); }, 60_000);
-  };
 }
