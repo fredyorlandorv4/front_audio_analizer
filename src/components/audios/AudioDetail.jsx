@@ -1,9 +1,10 @@
 // src/components/audios/AudioDetail.jsx
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { ArrowLeft, Music, Play, Pause, Trash2, FileText, X } from 'lucide-react';
+import { ArrowLeft, Music, Play, Pause, Trash2, FileText, X, Download, FileSpreadsheet } from 'lucide-react';
 import { audiosAPI } from '../../services/api';
 import { formatBytes, formatDate } from '../../utils/formatters';
+import { exportAsCSV, exportAsPDF } from '../../utils/exportAnalisis';
 import { useApp } from '../../context/AppContext';
 
 // Renderiza un string que puede contener markdown
@@ -218,10 +219,33 @@ export default function AudioDetail({
               )}
             </div>
 
-            <div className="sticky bottom-0 bg-gray-50 border-t p-4 flex justify-end">
+            <div className="sticky bottom-0 bg-gray-50 border-t p-4 flex items-center justify-between gap-3">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => exportAsPDF(
+                    'Análisis del Audio',
+                    audio.original_filename,
+                    audio.extra,
+                    [['Archivo', audio.original_filename], ['Tamaño', formatBytes(audio.size_bytes)], ['Fecha', formatDate(audio.created_at)]]
+                  )}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 text-sm font-medium"
+                >
+                  <Download className="w-4 h-4" />PDF
+                </button>
+                <button
+                  onClick={() => exportAsCSV(
+                    audio.extra,
+                    `analisis_${audio.original_filename}.csv`,
+                    [['archivo', audio.original_filename], ['tamaño', formatBytes(audio.size_bytes)], ['fecha', formatDate(audio.created_at)]]
+                  )}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 text-sm font-medium"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />CSV
+                </button>
+              </div>
               <button
                 onClick={() => setShowExtraModal(false)}
-                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold"
+                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold text-sm"
               >
                 Cerrar
               </button>

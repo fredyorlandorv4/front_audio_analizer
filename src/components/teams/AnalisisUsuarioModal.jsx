@@ -1,9 +1,10 @@
 // src/components/teams/AnalisisUsuarioModal.jsx
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { X, BarChart2, CheckCircle, TrendingUp, Lightbulb, Calendar, Loader, AlertTriangle, Star } from 'lucide-react';
+import { X, BarChart2, CheckCircle, TrendingUp, Lightbulb, Calendar, Loader, AlertTriangle, Star, Download, FileSpreadsheet } from 'lucide-react';
 import { analisisUsuarioAPI } from '../../services/api';
 import { formatDate, scoreColor, scoreBg } from '../../utils/formatters';
+import { exportAsCSV, exportAsPDF } from '../../utils/exportAnalisis';
 import { useApp } from '../../context/AppContext';
 
 // Maneja status en inglés y español
@@ -327,7 +328,34 @@ export default function AnalisisUsuarioModal({ member, onClose }) {
         </div>
 
         {/* Footer */}
-        <div className="border-t p-4 flex justify-end flex-shrink-0">
+        <div className="border-t p-4 flex items-center justify-between gap-3 flex-shrink-0">
+          <div className="flex gap-2">
+            {analisis?.resultado && (
+              <>
+                <button
+                  onClick={() => exportAsPDF(
+                    'Análisis Individual',
+                    member.nombre || member.email,
+                    analisis.resultado,
+                    [['Usuario', member.nombre || member.email], ['Fecha', formatDate(analisis.created_at)], ['Audios analizados', analisis.total_audios_analizados ?? '—']]
+                  )}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 text-sm font-medium"
+                >
+                  <Download className="w-4 h-4" />PDF
+                </button>
+                <button
+                  onClick={() => exportAsCSV(
+                    analisis.resultado,
+                    `analisis_${(member.nombre || member.email).replace(/\s+/g, '_')}.csv`,
+                    [['usuario', member.nombre || member.email], ['fecha', formatDate(analisis.created_at)], ['audios_analizados', analisis.total_audios_analizados ?? '']]
+                  )}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 text-sm font-medium"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />CSV
+                </button>
+              </>
+            )}
+          </div>
           <button onClick={onClose} className="px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold text-sm">
             Cerrar
           </button>

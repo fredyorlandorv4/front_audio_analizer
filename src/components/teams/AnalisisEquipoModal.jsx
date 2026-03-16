@@ -3,10 +3,12 @@ import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import {
   X, Users, CheckCircle, TrendingUp, Lightbulb, Calendar,
-  Loader, AlertTriangle, Star, BarChart2, UserCheck, UserX
+  Loader, AlertTriangle, Star, BarChart2, UserCheck, UserX,
+  Download, FileSpreadsheet
 } from 'lucide-react';
 import { analisisEquipoAPI } from '../../services/api';
 import { formatDate, scoreColor, scoreBg } from '../../utils/formatters';
+import { exportAsCSV, exportAsPDF } from '../../utils/exportAnalisis';
 import { useApp } from '../../context/AppContext';
 
 // Maneja tanto status en inglés como en español
@@ -352,7 +354,34 @@ export default function AnalisisEquipoModal({ team, onClose }) {
         </div>
 
         {/* Footer */}
-        <div className="border-t p-4 flex justify-end flex-shrink-0">
+        <div className="border-t p-4 flex items-center justify-between gap-3 flex-shrink-0">
+          <div className="flex gap-2">
+            {analisis?.resultado && (
+              <>
+                <button
+                  onClick={() => exportAsPDF(
+                    'Análisis Grupal',
+                    team.nombre,
+                    analisis.resultado,
+                    [['Equipo', team.nombre], ['Fecha', formatDate(analisis.created_at)], ['Miembros incluidos', analisis.miembros_incluidos?.length ?? '—']]
+                  )}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 text-sm font-medium"
+                >
+                  <Download className="w-4 h-4" />PDF
+                </button>
+                <button
+                  onClick={() => exportAsCSV(
+                    analisis.resultado,
+                    `analisis_equipo_${team.nombre.replace(/\s+/g, '_')}.csv`,
+                    [['equipo', team.nombre], ['fecha', formatDate(analisis.created_at)], ['miembros_incluidos', analisis.miembros_incluidos?.length ?? '']]
+                  )}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 text-sm font-medium"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />CSV
+                </button>
+              </>
+            )}
+          </div>
           <button onClick={onClose} className="px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold text-sm">
             Cerrar
           </button>
