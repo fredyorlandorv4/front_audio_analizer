@@ -222,7 +222,8 @@ function StructuredResult({ resultado }) {
           <ul className="space-y-1.5">
             {fortalezasList.map((item, i) => (
               <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                <span className="text-green-500 mt-0.5 flex-shrink-0">✓</span>{item}
+                <span className="text-green-500 mt-0.5 flex-shrink-0">✓</span>
+                <div className="flex-1 min-w-0"><MdOrText text={typeof item === 'string' ? item : JSON.stringify(item)} /></div>
               </li>
             ))}
           </ul>
@@ -236,7 +237,8 @@ function StructuredResult({ resultado }) {
           <ul className="space-y-1.5">
             {mejorasList.map((item, i) => (
               <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                <span className="text-orange-500 mt-0.5 flex-shrink-0">⚠</span>{item}
+                <span className="text-orange-500 mt-0.5 flex-shrink-0">⚠</span>
+                <div className="flex-1 min-w-0"><MdOrText text={typeof item === 'string' ? item : JSON.stringify(item)} /></div>
               </li>
             ))}
           </ul>
@@ -250,7 +252,8 @@ function StructuredResult({ resultado }) {
           <ul className="space-y-1.5">
             {recomendList.map((item, i) => (
               <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                <span className="text-blue-500 mt-0.5 flex-shrink-0">→</span>{item}
+                <span className="text-blue-500 mt-0.5 flex-shrink-0">→</span>
+                <div className="flex-1 min-w-0"><MdOrText text={typeof item === 'string' ? item : JSON.stringify(item)} /></div>
               </li>
             ))}
           </ul>
@@ -261,7 +264,10 @@ function StructuredResult({ resultado }) {
           <h4 className="text-xs font-semibold text-purple-800 uppercase tracking-wide mb-2">Tendencias</h4>
           <ul className="space-y-1">
             {tendencias.map((t, i) => (
-              <li key={i} className="text-sm text-gray-700 pl-3">• {typeof t === 'string' ? t : JSON.stringify(t)}</li>
+              <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
+                <span className="text-purple-400 flex-shrink-0 mt-0.5">•</span>
+                <div className="flex-1 min-w-0"><MdOrText text={typeof t === 'string' ? t : JSON.stringify(t)} /></div>
+              </li>
             ))}
           </ul>
         </div>
@@ -270,7 +276,12 @@ function StructuredResult({ resultado }) {
         <div>
           <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-2">Observaciones</h4>
           <ul className="space-y-1">
-            {observList.map((obs, i) => <li key={i} className="text-sm text-gray-700 pl-3">• {obs}</li>)}
+            {observList.map((obs, i) => (
+              <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
+                <span className="text-indigo-400 flex-shrink-0 mt-0.5">•</span>
+                <div className="flex-1 min-w-0"><MdOrText text={typeof obs === 'string' ? obs : JSON.stringify(obs)} /></div>
+              </li>
+            ))}
           </ul>
         </div>
       )}
@@ -279,7 +290,10 @@ function StructuredResult({ resultado }) {
           <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-2">Patrones Identificados</h4>
           <ul className="space-y-1">
             {patronesList.map((p, i) => (
-              <li key={i} className="text-sm text-gray-700 pl-3">• {typeof p === 'string' ? p : JSON.stringify(p)}</li>
+              <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
+                <span className="text-indigo-400 flex-shrink-0 mt-0.5">•</span>
+                <div className="flex-1 min-w-0"><MdOrText text={typeof p === 'string' ? p : JSON.stringify(p)} /></div>
+              </li>
             ))}
           </ul>
         </div>
