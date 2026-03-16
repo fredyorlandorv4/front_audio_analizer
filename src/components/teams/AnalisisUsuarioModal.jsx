@@ -88,6 +88,68 @@ function MarkdownContent({ text }) {
   );
 }
 
+// Helpers para renderizar campos desconocidos / anidados ──────────────────────
+
+function isEmptyValue(v) {
+  if (v === null || v === undefined || v === '') return true;
+  if (Array.isArray(v) && v.length === 0) return true;
+  if (Array.isArray(v) && v.every(i => typeof i === 'string' && i.toLowerCase().includes('nothing found'))) return true;
+  return false;
+}
+
+const FIELD_LABEL = {
+  quality_score: 'Puntaje de Calidad', rationale: 'Justificación',
+  main_points: 'Puntos Principales', action_items: 'Acciones a Tomar',
+  follow_up: 'Seguimiento', references: 'Referencias', related_topics: 'Temas Relacionados',
+  suggested_phrases: 'Frases Sugeridas', compliance_flags: 'Alertas de Cumplimiento',
+  next_steps: 'Próximos Pasos', supervisor_coaching: 'Coaching al Supervisor',
+  areas_for_improvement: 'Áreas de Mejora', strengths: 'Fortalezas',
+  observations: 'Observaciones', score: 'Puntaje',
+};
+const toLabel = (key) => FIELD_LABEL[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+function NestedValue({ value }) {
+  if (isEmptyValue(value)) return null;
+  if (Array.isArray(value)) {
+    if (value.every(i => typeof i !== 'object' || i === null)) {
+      return (
+        <ul className="space-y-1 mt-1">
+          {value.map((item, i) => (
+            <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
+              <span className="text-purple-400 flex-shrink-0 mt-0.5">•</span>
+              <span>{String(item)}</span>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    return (
+      <div className="space-y-2 mt-1">
+        {value.map((item, i) => (
+          <div key={i} className="pl-3 border-l-2 border-purple-100">
+            <NestedValue value={item} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (typeof value === 'object') {
+    return (
+      <div className="space-y-2 mt-1 pl-3 border-l-2 border-purple-100">
+        {Object.entries(value).filter(([, v]) => !isEmptyValue(v)).map(([k, v]) => (
+          <div key={k}>
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{toLabel(k)}: </span>
+            {typeof v === 'object' ? <NestedValue value={v} /> : <span className="text-sm text-gray-700">{String(v)}</span>}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return <p className="text-sm text-gray-700 mt-1">{String(value)}</p>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Renderiza resultado estructurado (objeto con campos específicos)
 function StructuredResult({ resultado }) {
   const {
@@ -108,7 +170,7 @@ function StructuredResult({ resultado }) {
   const recomendList     = recomendaciones ?? recommendations;
   const observList       = observaciones ?? observations;
   const patronesList     = patrones_identificados ?? patterns;
-  const restEntries      = Object.entries(rest).filter(([, v]) => v !== null && v !== undefined && v !== '');
+  const restEntries      = Object.entries(rest).filter(([, v]) => !isEmptyValue(v));
 
   const allEmpty = !punteo && !resumenText && !fortalezasList?.length && !mejorasList?.length
                   && !recomendList?.length && !observList?.length && restEntries.length === 0;
@@ -200,18 +262,8 @@ function StructuredResult({ resultado }) {
       )}
       {restEntries.map(([key, value]) => (
         <div key={key}>
-          <h4 className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-2">{key.replace(/_/g, ' ')}</h4>
-          {Array.isArray(value) ? (
-            <ul className="space-y-1">
-              {value.map((item, i) => (
-                <li key={i} className="text-sm text-gray-700 pl-3">• {typeof item === 'string' ? item : JSON.stringify(item)}</li>
-              ))}
-            </ul>
-          ) : typeof value === 'object' ? (
-            <pre className="text-xs bg-gray-50 p-3 rounded-lg overflow-auto border border-gray-200">{JSON.stringify(value, null, 2)}</pre>
-          ) : (
-            <p className="text-sm text-gray-700">{String(value)}</p>
-          )}
+          <h4 className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-2">{toLabel(key)}</h4>
+          <NestedValue value={value} />
         </div>
       ))}
     </div>
