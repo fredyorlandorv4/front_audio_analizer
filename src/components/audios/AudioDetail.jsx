@@ -1,9 +1,78 @@
 // src/components/audios/AudioDetail.jsx
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { ArrowLeft, Music, Play, Pause, Trash2, FileText, X } from 'lucide-react';
 import { audiosAPI } from '../../services/api';
 import { formatBytes, formatDate } from '../../utils/formatters';
 import { useApp } from '../../context/AppContext';
+
+// Renderiza un string que puede contener markdown
+function MdText({ text }) {
+  if (!text) return null;
+  return (
+    <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
+      <ReactMarkdown
+        components={{
+          h1: ({ children }) => <h1 className="text-lg font-bold text-gray-900 mt-4 mb-1 border-b pb-1">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-base font-semibold text-purple-800 mt-3 mb-1">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-sm font-semibold text-gray-700 mt-2 mb-1">{children}</h3>,
+          p:  ({ children }) => <p className="text-sm text-gray-700 mb-2 leading-relaxed">{children}</p>,
+          ul: ({ children }) => <ul className="space-y-1 mb-2 pl-1">{children}</ul>,
+          ol: ({ children }) => <ol className="space-y-1 mb-2 pl-4 list-decimal">{children}</ol>,
+          li: ({ children }) => <li className="text-sm text-gray-700 flex items-start gap-1.5"><span className="text-purple-400 flex-shrink-0 mt-1">•</span><span>{children}</span></li>,
+          strong: ({ children }) => <strong className="font-semibold text-gray-900">{children}</strong>,
+          hr: () => <hr className="my-3 border-purple-100" />,
+          code: ({ children }) => <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>,
+        }}
+      >{text}</ReactMarkdown>
+    </div>
+  );
+}
+
+// Etiqueta legible para las claves del objeto extra
+function fieldLabel(key) {
+  const map = {
+    title: 'Título', summary: 'Resumen', transcription: 'Transcripción',
+    transcript: 'Transcripción', sentiment: 'Sentimiento', sentimiento: 'Sentimiento',
+    score: 'Puntaje', punteo: 'Puntaje', punteo_promedio: 'Puntaje Promedio',
+    keywords: 'Palabras Clave', palabras_clave: 'Palabras Clave',
+    topics: 'Temas', temas: 'Temas', language: 'Idioma', idioma: 'Idioma',
+    duration: 'Duración', duracion: 'Duración',
+    fortalezas: 'Fortalezas', strengths: 'Fortalezas',
+    areas_de_mejora: 'Áreas de Mejora', recomendaciones: 'Recomendaciones',
+    observaciones: 'Observaciones', notas: 'Notas', notes: 'Notas',
+  };
+  return map[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// Renderiza un campo individual de audio.extra
+function ExtraField({ label, value }) {
+  if (value === null || value === undefined || value === '') return null;
+
+  return (
+    <div>
+      <h4 className="text-sm font-semibold text-purple-700 uppercase tracking-wide mb-1.5">{label}</h4>
+      {Array.isArray(value) ? (
+        <ul className="space-y-1">
+          {value.map((item, i) => (
+            <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
+              <span className="text-purple-400 flex-shrink-0 mt-0.5">•</span>
+              <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : typeof value === 'object' ? (
+        <pre className="text-xs bg-gray-50 p-3 rounded-lg overflow-auto border border-gray-200 whitespace-pre-wrap">
+          {JSON.stringify(value, null, 2)}
+        </pre>
+      ) : typeof value === 'string' && value.includes('\n') ? (
+        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200"><MdText text={value} /></div>
+      ) : (
+        <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 border border-gray-200">{String(value)}</p>
+      )}
+    </div>
+  );
+}
 
 export default function AudioDetail({
   audio,
@@ -138,17 +207,14 @@ export default function AudioDetail({
             </div>
 
             <div className="p-6 space-y-6">
-              {audio.extra.title && (
-                <div>
-                  <h4 className="text-lg font-semibold text-purple-600 mb-2">Título</h4>
-                  <p className="text-gray-800">{audio.extra.title}</p>
-                </div>
-              )}
-              {audio.extra.summary && (
-                <div>
-                  <h4 className="text-lg font-semibold text-purple-600 mb-2">Resumen</h4>
-                  <p className="text-gray-700">{audio.extra.summary}</p>
-                </div>
+              {typeof audio.extra === 'string' ? (
+                <MdText text={audio.extra} />
+              ) : (
+                Object.entries(audio.extra)
+                  .filter(([, v]) => v !== null && v !== undefined && v !== '')
+                  .map(([key, value]) => (
+                    <ExtraField key={key} label={fieldLabel(key)} value={value} />
+                  ))
               )}
             </div>
 
