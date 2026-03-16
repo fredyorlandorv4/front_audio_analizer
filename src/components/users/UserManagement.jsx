@@ -184,24 +184,22 @@ export default function UserManagement() {
                         <Upload className="w-3.5 h-3.5" />
                         <span className="hidden sm:inline">Cargar audios</span>
                       </button>
-                      {!SOLO_CARGA.includes(rolKey(user.role ?? user.rol)) && (<>
-                        <button
-                          onClick={() => openEditModal(user)}
-                          title="Editar usuario"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Editar</span>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          title="Eliminar usuario"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Eliminar</span>
-                        </button>
-                      </>)}
+                      <button
+                        onClick={() => openEditModal(user)}
+                        title="Editar usuario"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Editar</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(user.id)}
+                        title="Eliminar usuario"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Eliminar</span>
+                      </button>
                     </div>
                   </td>
                 </tr>
