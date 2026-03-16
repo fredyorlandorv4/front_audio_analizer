@@ -1,5 +1,9 @@
 // src/utils/exportAnalisis.js
 // Utilidades de exportación (PDF y CSV) para modales de análisis
+import { marked } from 'marked';
+
+// Configuración de marked: no sanitiza (confiamos en nuestros datos)
+marked.setOptions({ breaks: true, gfm: true });
 
 // ── CSV ───────────────────────────────────────────────────────────────────────
 
@@ -56,22 +60,12 @@ export function exportAsCSV(resultado, filename, metaRows = []) {
 
 function renderValueHTML(value) {
   if (Array.isArray(value)) {
-    return `<ul>${value.map(i => `<li>${typeof i === 'string' ? i : JSON.stringify(i)}</li>`).join('')}</ul>`;
+    return `<ul>${value.map(i => `<li>${typeof i === 'string' ? marked.parseInline(i) : JSON.stringify(i)}</li>`).join('')}</ul>`;
   }
   if (typeof value === 'object' && value !== null) {
     return `<pre>${JSON.stringify(value, null, 2)}</pre>`;
   }
-  const str = String(value);
-  // Convierte markdown básico a HTML para el PDF
-  return str
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^# (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/\n/g, '<br/>');
+  return marked.parse(String(value));
 }
 
 function buildBodyHTML(resultado) {
