@@ -50,6 +50,8 @@ export default function UserModal({ user, onSave, onClose }) {
           { id: 1, name: 'admin' },
           { id: 2, name: 'supervisor' },
           { id: 3, name: 'operador' },
+          { id: 4, name: 'vendedor' },
+          { id: 5, name: 'telemarketing' },
         ]);
       } finally {
         setLoadingRoles(false);

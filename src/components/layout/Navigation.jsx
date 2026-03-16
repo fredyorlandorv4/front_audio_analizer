@@ -3,10 +3,10 @@ import React from 'react';
 import { useApp } from '../../context/AppContext';
 
 const NAV_ITEMS = [
-  { id: 'list',   label: 'Mis Audios',   minRole: 3 },
-  { id: 'upload', label: 'Cargar Audio', minRole: 3 },
-  { id: 'teams',  label: 'Equipos',      minRole: 2 },
-  { id: 'users',  label: 'Usuarios',     minRole: 1 },
+  { id: 'list',   label: 'Mis Audios',   minRole: 99 },
+  { id: 'upload', label: 'Cargar Audio', minRole: 3  },
+  { id: 'teams',  label: 'Equipos',      minRole: 2  },
+  { id: 'users',  label: 'Usuarios',     minRole: 1  },
 ];
 
 export default function Navigation({ currentView, setCurrentView }) {
